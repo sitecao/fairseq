@@ -10,6 +10,8 @@ import torch.nn as nn
 from fairseq.legacy_distributed_data_parallel import LegacyDistributedDataParallel
 from fairseq.models import BaseFairseqModel
 
+from herring.torch.parallel import DistributedDataParallel as DDP
+import herring.torch as hr
 
 _GOSSIP_DISABLED = False
 try:
@@ -34,14 +36,10 @@ def DistributedFairseqModel(args, model, process_group=None):
     # determine which DDP class to extend
     assert isinstance(model, nn.Module)
     if args.distributed_wrapper == 'DDP' and args.ddp_backend == 'c10d':
-        ddp_class = nn.parallel.DistributedDataParallel
+        ddp_class = DDP
         init_kwargs = dict(
             module=model,
-            device_ids=[args.device_id],
-            output_device=args.device_id,
-            broadcast_buffers=args.broadcast_buffers,
-            bucket_cap_mb=args.bucket_cap_mb,
-            process_group=process_group,
+            device_ids=[hr.get_local_rank()]
         )
         # Maintain backward compatibility
         if 'check_reduction' in inspect.getargspec(ddp_class)[0]:
@@ -49,12 +47,9 @@ def DistributedFairseqModel(args, model, process_group=None):
         if 'find_unused_parameters' in inspect.getargspec(ddp_class)[0]:
             init_kwargs['find_unused_parameters'] = args.find_unused_parameters
     elif args.distributed_wrapper == 'DDP' and args.ddp_backend == 'no_c10d':
-        ddp_class = LegacyDistributedDataParallel
+        ddp_class = DDP
         init_kwargs = dict(
-            module=model,
-            world_size=args.distributed_world_size,
-            buffer_size=2**28,
-            process_group=process_group,
+            module=model
         )
     elif args.distributed_wrapper == 'SlowMo':
         if _GOSSIP_DISABLED:

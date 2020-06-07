@@ -17,6 +17,8 @@ from typing import Any, Dict, Mapping
 import torch
 import torch.distributed as dist
 
+import herring.torch as hr
+
 from fairseq import utils
 
 
@@ -81,27 +83,24 @@ def distributed_init(args):
         raise ValueError('Cannot initialize distributed with distributed_world_size=1')
 
     if not getattr(args, 'tpu', False):
-        if torch.distributed.is_initialized():
-            warnings.warn('Distributed is already initialized, cannot initialize twice!')
-        else:
-            logger.info('distributed init (rank {}): {}'.format(
-                args.distributed_rank, args.distributed_init_method,
-            ))
-            dist.init_process_group(
-                backend=args.distributed_backend,
-                init_method=args.distributed_init_method,
-                world_size=args.distributed_world_size,
-                rank=args.distributed_rank,
-            )
-            logger.info('initialized host {} as rank {}'.format(
-                socket.gethostname(), args.distributed_rank,
-            ))
+        logger.info('distributed init (rank {}): {}'.format(
+            args.distributed_rank, args.distributed_init_method,
+        ))
+        #dist.init_process_group(
+        #    backend=args.distributed_backend,
+        #    init_method=args.distributed_init_method,
+        #    world_size=args.distributed_world_size,
+        #    rank=args.distributed_rank,
+        #)
+        logger.info('initialized host {} as rank {}'.format(
+            socket.gethostname(), args.distributed_rank,
+        ))
 
-            # perform a dummy all-reduce to initialize the NCCL communicator
-            if torch.cuda.is_available():
-                dist.all_reduce(torch.zeros(1).cuda())
+        # perform a dummy all-reduce to initialize the NCCL communicator
+        #if torch.cuda.is_available():
+        #    dist.all_reduce(torch.zeros(1).cuda())
 
-        args.distributed_rank = torch.distributed.get_rank()
+        args.distributed_rank = hr.get_rank()
     else:
         import torch_xla.core.xla_model as xm
         assert xm.xrt_world_size() == args.distributed_world_size
@@ -180,15 +179,16 @@ def call_main(args, main, **kwargs):
 
 
 def get_rank():
-    return dist.get_rank()
+    return hr.get_rank()
 
 
 def get_world_size():
-    return dist.get_world_size()
+    return hr.get_world_size()
 
 
 def get_default_group():
-    return dist.group.WORLD
+    assert False
+    #return dist.group.WORLD
 
 
 def all_reduce(tensor, group=None):
@@ -196,9 +196,9 @@ def all_reduce(tensor, group=None):
         import torch_xla.core.xla_model as xm
         return xm.all_reduce('sum', [tensor], groups=group[1])
     else:
-        if group is None:
-            group = get_default_group()
-        return dist.all_reduce(tensor, group=group)
+        #if group is None:
+        #    group = get_default_group()
+        return hr.all_reduce(tensor)
 
 
 def all_gather_list(data, group=None, max_size=16384):
