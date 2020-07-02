@@ -849,7 +849,6 @@ class Trainer(object):
         return max_abs_diff / (first_grad_norm + 1e-6) < 1e-6
 
     def _check_grad_norms(self, grad_norm):
-        return
         """Check that grad norms are consistent across workers."""
         if self._grad_norm_buf is not None:
             self._grad_norm_buf.zero_()
