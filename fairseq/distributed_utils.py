@@ -15,7 +15,8 @@ from collections import OrderedDict
 from typing import Any, Dict, Mapping
 
 import torch
-import torch.distributed as dist
+#import torch.distributed as dist
+import herring.torch as dist
 
 from fairseq import utils
 
@@ -84,7 +85,7 @@ def infer_init_method(args, force_distributed=False):
 
 def distributed_init(args):
     if not getattr(args, 'tpu', False):
-        if torch.distributed.is_initialized():
+        if dist.is_initialized():
             warnings.warn('Distributed is already initialized, cannot initialize twice!')
         else:
             logger.info('distributed init (rank {}): {}'.format(
@@ -104,7 +105,7 @@ def distributed_init(args):
             if torch.cuda.is_available():
                 dist.all_reduce(torch.zeros(1).cuda())
 
-        args.distributed_rank = torch.distributed.get_rank()
+        args.distributed_rank = dist.get_rank()
     else:
         import torch_xla.core.xla_model as xm
         assert xm.xrt_world_size() == args.distributed_world_size
