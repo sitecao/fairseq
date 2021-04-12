@@ -8,6 +8,7 @@ import inspect
 import torch.nn as nn
 from fairseq.legacy_distributed_data_parallel import LegacyDistributedDataParallel
 
+from herring.torch.parallel import DistributedDataParallel as DDP
 
 _GOSSIP_DISABLED = False
 try:
@@ -32,7 +33,7 @@ def DistributedFairseqModel(args, model, process_group=None):
     # determine which DDP class to extend
     assert isinstance(model, nn.Module)
     if args.distributed_wrapper == "DDP" and args.ddp_backend == "c10d":
-        ddp_class = nn.parallel.DistributedDataParallel
+        ddp_class = DDP
         init_kwargs = dict(
             module=model,
             device_ids=[args.device_id],
