@@ -10,8 +10,9 @@ import torch.nn as nn
 from fairseq.legacy_distributed_data_parallel import LegacyDistributedDataParallel
 from fairseq.models import BaseFairseqModel
 
-from herring.torch.parallel import DistributedDataParallel as DDP
-import herring.torch as dist
+# SMDDP: import SMDDP packages
+import smdistributed.dataparallel.torch.distributed as dist
+from smdistributed.dataparallel.torch.parallel.distributed import DistributedDataParallel as DDP
 
 _GOSSIP_DISABLED = False
 try:

@@ -15,8 +15,10 @@ from collections import OrderedDict
 from typing import Any, Dict, Mapping
 
 import torch
+
+# SMDDP: change dist to use SMDDP
 #import torch.distributed as dist
-import herring.torch as dist
+import smdistributed.dataparallel.torch.distributed as dist
 
 from fairseq import utils
 
@@ -91,12 +93,22 @@ def distributed_init(args):
             logger.info('distributed init (rank {}): {}'.format(
                 args.distributed_rank, args.distributed_init_method,
             ))
-            dist.init_process_group(
-                backend=args.distributed_backend,
-                init_method=args.distributed_init_method,
-                world_size=args.distributed_world_size,
-                rank=args.distributed_rank,
-            )
+            # SMDDP: we do not rely on these options to initialize. It's all taken care of by
+            #        our own launch utility on SageMaker
+            #dist.init_process_group(
+                #backend=args.distributed_backend,
+                #init_method=args.distributed_init_method,
+                #world_size=args.distributed_world_size,
+                #rank=args.distributed_rank,
+            #)
+            # SMDDP: we simply call dist.init_process_group() to initialize
+            dist.init_process_group()
+            # SMDDP: instead of passing the following info manually, we can rely on SMDDP to
+            #        proive them for us
+            args.distributed_world_size = dist.get_world_size()
+            args.device_id = dist.get_local_rank()
+            args.distributed_rank = dist.get_rank()
+
             logger.info('initialized host {} as rank {}'.format(
                 socket.gethostname(), args.distributed_rank,
             ))
