@@ -94,6 +94,7 @@ def distributed_init(args):
                 world_size=args.distributed_world_size,
                 rank=args.distributed_rank,
             )
+            args.device_id = args.distributed_rank % 8
             logger.info('initialized host {} as rank {}'.format(
                 socket.gethostname(), args.distributed_rank,
             ))
