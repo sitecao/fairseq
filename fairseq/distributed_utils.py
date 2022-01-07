@@ -16,6 +16,7 @@ from typing import Any, Dict, Mapping
 
 import torch
 import torch.distributed as dist
+import torch_smddp
 
 from fairseq import utils
 
@@ -88,7 +89,7 @@ def distributed_init(args):
                 args.distributed_rank, args.distributed_init_method,
             ))
             dist.init_process_group(
-                backend=args.distributed_backend,
+                backend='smddp',#args.distributed_backend,
                 init_method=args.distributed_init_method,
                 world_size=args.distributed_world_size,
                 rank=args.distributed_rank,
