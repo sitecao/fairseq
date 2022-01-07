@@ -64,27 +64,51 @@ def load_indexed_dataset(path, dictionary, dataset_impl=None, combine=False, def
     """
     from fairseq.data.concat_dataset import ConcatDataset
     import fairseq.data.indexed_dataset as indexed_dataset
+    
+    # the following code will accelerate dataset loading
+    import threading
+    # must combine!
+    combine = True
 
     datasets = []
-    for k in itertools.count():
-        path_k = path + (str(k) if k > 0 else '')
+    lock = threading.Lock()
 
-        dataset_impl_k = dataset_impl
-        if dataset_impl_k is None:
-            dataset_impl_k = indexed_dataset.infer_dataset_impl(path_k)
+    def load_dataset(thread_idx, thread_count):
+        for k in itertools.count():
+            k = k * thread_count + thread_idx
+            path_k = path + (str(k) if k > 0 else '')
 
-        dataset = indexed_dataset.make_dataset(
-            path_k,
-            impl=dataset_impl_k or default,
-            fix_lua_indexing=True,
-            dictionary=dictionary,
-        )
-        if dataset is None:
-            break
-        logger.info('loaded {} examples from: {}'.format(len(dataset), path_k))
-        datasets.append(dataset)
-        if not combine:
-            break
+            dataset_impl_k = dataset_impl
+            if dataset_impl_k is None:
+                dataset_impl_k = indexed_dataset.infer_dataset_impl(path_k)
+
+            dataset = indexed_dataset.make_dataset(
+                path_k,
+                impl=dataset_impl_k or default,
+                fix_lua_indexing=True,
+                dictionary=dictionary,
+            )
+            if dataset is None:
+                break
+            logger.info('loaded {} examples from: {}'.format(len(dataset), path_k))
+
+            lock.acquire()
+            datasets.append(dataset)
+            lock.release()
+
+            if not combine:
+                break
+
+    thread_count = 10
+    threads = []
+    for i in range(thread_count):
+        x = threading.Thread(target=load_dataset, args=(i, thread_count,))
+        x.start()
+        threads.append(x)
+
+    for i in range(thread_count):
+        threads[i].join()
+
     if len(datasets) == 0:
         return None
     elif len(datasets) == 1:
