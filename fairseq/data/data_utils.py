@@ -74,8 +74,11 @@ def load_indexed_dataset(path, dictionary, dataset_impl=None, combine=False, def
     lock = threading.Lock()
 
     def load_dataset(thread_idx, thread_count):
+        import os
+        local_rank = int(os.environ['RANK']) % 8
         for k in itertools.count():
             k = k * thread_count + thread_idx
+            k = k * 8 + local_rank
             path_k = path + (str(k) if k > 0 else '')
 
             dataset_impl_k = dataset_impl
