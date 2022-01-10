@@ -114,7 +114,7 @@ def load_indexed_dataset(path, dictionary, dataset_impl=None, combine=False, def
     thread_count = files_per_rank
     threads = []
     for i in range(thread_count):
-        load_dataset(thread_idx)
+        load_dataset(i)
         #x = threading.Thread(target=load_dataset, args=(i,))
         #x.start()
         #threads.append(x)
