@@ -107,19 +107,20 @@ def load_indexed_dataset(path, dictionary, dataset_impl=None, combine=False, def
         )
         logger.info('loaded {} examples from: {}'.format(len(dataset), path_k))
 
-        lock.acquire()
+        #lock.acquire()
         datasets.append(dataset)
-        lock.release()
+        #lock.release()
 
     thread_count = files_per_rank
     threads = []
     for i in range(thread_count):
-        x = threading.Thread(target=load_dataset, args=(i,))
-        x.start()
-        threads.append(x)
+        load_dataset(thread_idx)
+        #x = threading.Thread(target=load_dataset, args=(i,))
+        #x.start()
+        #threads.append(x)
 
-    for i in range(thread_count):
-        threads[i].join()
+    #for i in range(thread_count):
+        #threads[i].join()
 
 
     if len(datasets) == 0:
