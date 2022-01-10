@@ -73,44 +73,54 @@ def load_indexed_dataset(path, dictionary, dataset_impl=None, combine=False, def
     datasets = []
     lock = threading.Lock()
 
-    def load_dataset(thread_idx, thread_count):
+    num_of_files = 0
+    for k in itertools.count():
+        path_k = path + (str(k) if k > 0 else '')
+        if os.path.isfile(path_k+'.bin') and os.path.isfile(path_k+'.idx'):
+             num_of_files = k + 1
+        else:
+            break
+    world_size = int(os.environ['WORLD_SIZE'])
+    files_per_rank = num_of_files // world_size
+    if path.endswith('valid'):
+        files_per_rank = 1
+    print(path, files_per_rank)
+
+    def load_dataset(thread_idx):
         import os
-        local_rank = int(os.environ['RANK']) % 8
-        for k in itertools.count():
-            k = k * thread_count + thread_idx
-            k = k * 8 + local_rank
-            path_k = path + (str(k) if k > 0 else '')
+        rank = int(os.environ['RANK'])
+        k = thread_idx
+        k = world_size * k + rank
+        if path.endswith('valid'):
+            k = 0
+        path_k = path + (str(k) if k > 0 else '')
+        print('loading ', path_k)
+        dataset_impl_k = dataset_impl
+        if dataset_impl_k is None:
+            dataset_impl_k = indexed_dataset.infer_dataset_impl(path_k)
 
-            dataset_impl_k = dataset_impl
-            if dataset_impl_k is None:
-                dataset_impl_k = indexed_dataset.infer_dataset_impl(path_k)
+        dataset = indexed_dataset.make_dataset(
+            path_k,
+            impl=dataset_impl_k or default,
+            fix_lua_indexing=True,
+            dictionary=dictionary,
+        )
+        logger.info('loaded {} examples from: {}'.format(len(dataset), path_k))
 
-            dataset = indexed_dataset.make_dataset(
-                path_k,
-                impl=dataset_impl_k or default,
-                fix_lua_indexing=True,
-                dictionary=dictionary,
-            )
-            if dataset is None:
-                break
-            logger.info('loaded {} examples from: {}'.format(len(dataset), path_k))
+        lock.acquire()
+        datasets.append(dataset)
+        lock.release()
 
-            lock.acquire()
-            datasets.append(dataset)
-            lock.release()
-
-            if not combine:
-                break
-
-    thread_count = 10
+    thread_count = files_per_rank
     threads = []
     for i in range(thread_count):
-        x = threading.Thread(target=load_dataset, args=(i, thread_count,))
+        x = threading.Thread(target=load_dataset, args=(i,))
         x.start()
         threads.append(x)
 
     for i in range(thread_count):
         threads[i].join()
+
 
     if len(datasets) == 0:
         return None
