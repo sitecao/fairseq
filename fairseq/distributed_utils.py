@@ -16,7 +16,7 @@ from typing import Any, Dict, Mapping
 
 import torch
 import torch.distributed as dist
-import torch_smddp
+import smdistributed.dataparallel.torch.torch_smddp
 
 from fairseq import utils
 
